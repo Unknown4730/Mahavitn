@@ -25,7 +25,6 @@ import {
   Info
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { addConsumerNumber } from '../utils/api';
 
 interface UserSetupPageProps {
   onSetupComplete: () => void;
@@ -144,19 +143,12 @@ export function UserSetupPage({ onSetupComplete, userId, userEmail }: UserSetupP
       if (!validateStep1()) return;
       
       setIsSubmitting(true);
-      try {
-        await addConsumerNumber(userId, {
-          consumer_number: consumerNumber,
-          consumer_name: consumerName,
-          service_address: consumerAddress
-        });
+      // Simulate adding consumer number
+      setTimeout(() => {
+        toast.success('Consumer account added successfully');
         setCurrentStep(2);
-      } catch (error) {
-        toast.error('Failed to add consumer account');
-        console.error(error);
-      } finally {
         setIsSubmitting(false);
-      }
+      }, 500);
     } else if (currentStep === 2) {
       // Save preferences (can be extended to save to database)
       setCurrentStep(3);

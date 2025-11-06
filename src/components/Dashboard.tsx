@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -8,14 +8,10 @@ import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Skeleton } from './ui/skeleton';
+import { Alert, AlertDescription } from './ui/alert';
 import { useLanguage } from './LanguageContext';
-import { 
-  mockConsumers, 
-  mockUsageData, 
-  mockUsageDataMarathi, 
-  mockUserProfile,
-  mockAnnouncements
-} from './mockData';
+import { mockConsumers, mockUsageData, mockUsageDataMarathi, mockAnnouncements } from './mockData';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { 
   Search, 
@@ -61,22 +57,30 @@ export function Dashboard({ isLoggedIn, onPageChange }: DashboardProps) {
   const { language, t } = useLanguage();
   const [searchConsumerNumber, setSearchConsumerNumber] = useState('');
   const [searchedConsumer, setSearchedConsumer] = useState(null);
-  const [selectedConsumer, setSelectedConsumer] = useState(mockConsumers?.[0] || {
-    consumerNumber: "MH123456789",
-    name: "Rajesh Kumar Sharma",
-    address: "123, Gandhi Nagar, Pune - 411001",
-    category: "Residential",
-    status: "Active",
-    currentBill: {
-      units: 285,
-      amount: 2850,
-      dueDate: "25 Oct 2025"
-    }
-  });
   const [showAddConsumer, setShowAddConsumer] = useState(false);
   const [newConsumerNumber, setNewConsumerNumber] = useState('');
-
+  
+  // Use mock data
+  const consumers = mockConsumers;
+  const announcements = mockAnnouncements;
+  const loadingAnnouncements = false;
+  const userProfile = { name: 'User' };
+  
+  // Select first consumer by default
+  const [selectedConsumerNumber, setSelectedConsumerNumber] = useState<string>(consumers[0]?.consumerNumber || '');
+  const selectedConsumer = consumers.find(c => c.consumerNumber === selectedConsumerNumber) || consumers[0];
+  
+  // Use mock usage data based on language
   const usageData = language === 'mr' ? mockUsageDataMarathi : mockUsageData;
+  
+  // Helper to format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
   
   // Simple mock detailed stats
   const detailedStats = {
@@ -125,17 +129,9 @@ export function Dashboard({ isLoggedIn, onPageChange }: DashboardProps) {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-
   const handleSearch = () => {
     if (searchConsumerNumber.trim()) {
-      const found = mockConsumers.find(c => c.consumerNumber === searchConsumerNumber.trim());
+      const found = consumers.find(c => c.consumerNumber === searchConsumerNumber.trim());
       setSearchedConsumer(found || null);
     }
   };
@@ -146,17 +142,6 @@ export function Dashboard({ isLoggedIn, onPageChange }: DashboardProps) {
       console.log('Adding consumer:', newConsumerNumber);
       setNewConsumerNumber('');
       setShowAddConsumer(false);
-    }
-  };
-
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -196,8 +181,8 @@ export function Dashboard({ isLoggedIn, onPageChange }: DashboardProps) {
           </h1>
           <p className="text-base sm:text-lg md:text-xl text-muted-foreground">
             {language === 'mr' 
-              ? `स्वागत आहे, ${mockUserProfile.name}` 
-              : `Welcome, ${mockUserProfile.name}`
+              ? `स्वागत आहे, ${userProfile?.name || 'ग्राहक'}` 
+              : `Welcome, ${userProfile?.name || 'User'}`
             }
           </p>
         </motion.div>
@@ -260,17 +245,16 @@ export function Dashboard({ isLoggedIn, onPageChange }: DashboardProps) {
                     {language === 'mr' ? 'ग्राहक निवडा' : 'Select Consumer'}
                   </Label>
                   <Select 
-                    value={selectedConsumer?.consumerNumber || ''} 
+                    value={selectedConsumerNumber || ''} 
                     onValueChange={(value) => {
-                      const consumer = mockConsumers.find(c => c.consumerNumber === value);
-                      if (consumer) setSelectedConsumer(consumer);
+                      setSelectedConsumerNumber(value);
                     }}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {(mockConsumers || []).map((consumer) => (
+                      {(consumers || []).map((consumer) => (
                         <SelectItem key={consumer.consumerNumber} value={consumer.consumerNumber}>
                           {consumer.consumerNumber} - {consumer.address}
                         </SelectItem>
@@ -393,7 +377,7 @@ export function Dashboard({ isLoggedIn, onPageChange }: DashboardProps) {
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
-                            <Label>{language === 'mr' ? '��िल क्रमांक' : 'Bill Number'}</Label>
+                            <Label>{language === 'mr' ? 'िल क्रमांक' : 'Bill Number'}</Label>
                             <p className="font-mono">BILL/2024/001234</p>
                           </div>
                           <div>
@@ -433,7 +417,7 @@ export function Dashboard({ isLoggedIn, onPageChange }: DashboardProps) {
                     <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle className="text-center">
-                          {language === 'mr' ? 'मीटर रीडिंग तपशील' : 'Meter Reading Details'}
+                          {language === 'mr' ? 'मीटर रीडिं तपशील' : 'Meter Reading Details'}
                         </DialogTitle>
                         <DialogDescription className="text-center">
                           {language === 'mr' 
@@ -914,65 +898,89 @@ export function Dashboard({ isLoggedIn, onPageChange }: DashboardProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {mockAnnouncements.map((announcement, index) => {
-                  const typeIcons = {
-                    info: Info,
-                    warning: AlertTriangle,
-                    maintenance: Settings,
-                    important: Bell
-                  };
-                  const typeColors = {
-                    info: 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800',
-                    warning: 'text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800',
-                    maintenance: 'text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 border-purple-200 dark:border-purple-800',
-                    important: 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800'
-                  };
-                  const Icon = typeIcons[announcement.type];
-                  const colorClass = typeColors[announcement.type];
-
-                  return (
-                    <motion.div
-                      key={announcement.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className={`p-4 rounded-lg border-2 ${colorClass} hover:shadow-md transition-shadow`}
-                    >
+              {loadingAnnouncements ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="p-4 rounded-lg border-2 border-gray-200 dark:border-gray-800">
                       <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${colorClass}`}>
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <h4 className="font-medium">
-                              {language === 'mr' ? announcement.titleMr : announcement.title}
-                            </h4>
-                            {announcement.priority === 'high' && (
-                              <Badge variant="destructive" className="flex-shrink-0 text-xs">
-                                {language === 'mr' ? 'उच्च' : 'High'}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {language === 'mr' ? announcement.descriptionMr : announcement.description}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Calendar className="w-3 h-3" />
-                            <span>
-                              {new Date(announcement.date).toLocaleDateString(language === 'mr' ? 'mr-IN' : 'en-IN', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric'
-                              })}
-                            </span>
-                          </div>
+                        <Skeleton className="w-10 h-10 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-3 w-full" />
+                          <Skeleton className="h-3 w-1/4" />
                         </div>
                       </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              ) : announcements.length === 0 ? (
+                <div className="text-center py-8">
+                  <Megaphone className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground">
+                    {language === 'mr' ? 'सध्या कोणत्याही घोषणा नाहीत' : 'No announcements at this time'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {announcements.map((announcement, index) => {
+                    const typeIcons = {
+                      info: Info,
+                      warning: AlertTriangle,
+                      maintenance: Settings,
+                      important: Bell
+                    };
+                    const typeColors = {
+                      info: 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800',
+                      warning: 'text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800',
+                      maintenance: 'text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 border-purple-200 dark:border-purple-800',
+                      important: 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800'
+                    };
+                    const Icon = typeIcons[announcement.type];
+                    const colorClass = typeColors[announcement.type];
+
+                    return (
+                      <motion.div
+                        key={announcement.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                        className={`p-4 rounded-lg border-2 ${colorClass} hover:shadow-md transition-shadow`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${colorClass}`}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <h4 className="font-medium">
+                                {language === 'mr' ? announcement.titleMr : announcement.title}
+                              </h4>
+                              {announcement.priority === 'high' && (
+                                <Badge variant="destructive" className="flex-shrink-0 text-xs">
+                                  {language === 'mr' ? 'उच्च' : 'High'}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {language === 'mr' ? announcement.descriptionMr : announcement.description}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Calendar className="w-3 h-3" />
+                              <span>
+                                {new Date(announcement.date).toLocaleDateString(language === 'mr' ? 'mr-IN' : 'en-IN', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric'
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

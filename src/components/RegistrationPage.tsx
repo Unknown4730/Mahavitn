@@ -7,7 +7,6 @@ import { Separator } from './ui/separator';
 import { Textarea } from './ui/textarea';
 import { useLanguage } from './LanguageContext';
 import { toast } from 'sonner@2.0.3';
-import { authApi } from '../utils/api';
 import { 
   Eye, 
   EyeOff, 
@@ -23,9 +22,10 @@ import {
 
 interface RegistrationPageProps {
   onPageChange: (page: string) => void;
+  onLogin: () => void;
 }
 
-export function RegistrationPage({ onPageChange }: RegistrationPageProps) {
+export function RegistrationPage({ onPageChange, onLogin }: RegistrationPageProps) {
   const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -58,28 +58,14 @@ export function RegistrationPage({ onPageChange }: RegistrationPageProps) {
       return;
     }
     
-    try {
-      const { data, error } = await authApi.signUp(
-        formData.email,
-        formData.password,
-        formData.name,
-        formData.phone
-      );
-
-      if (error) {
-        console.error('Registration error:', error);
-        toast.error('Registration failed: ' + error);
-        setIsLoading(false);
-        return;
-      }
-
-      toast.success('Account created successfully! Please sign in to continue.');
-      onPageChange('login');
-    } catch (error) {
-      console.error('Registration error:', error);
-      toast.error('Registration failed');
+    // Simple mock registration - accept any valid data
+    setTimeout(() => {
+      localStorage.setItem('userEmail', formData.email);
+      toast.success('Account created successfully! Logging you in...');
       setIsLoading(false);
-    }
+      onLogin();
+      onPageChange('dashboard');
+    }, 800);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -252,9 +238,10 @@ export function RegistrationPage({ onPageChange }: RegistrationPageProps) {
 
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-[var(--color-energy-blue)] to-[var(--color-energy-navy)] hover:shadow-lg"
+                className="w-full h-12 text-lg bg-gradient-to-r from-[#FFD700] to-[#FFA500] hover:from-[#FFA500] hover:to-[#FFD700] text-[var(--color-energy-navy)] shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 animate-pulse-subtle"
                 disabled={isLoading}
               >
+                <UserPlus className="w-5 h-5 mr-2" />
                 {isLoading ? 'Creating Account...' : t.createAccount}
               </Button>
             </form>
@@ -267,9 +254,10 @@ export function RegistrationPage({ onPageChange }: RegistrationPageProps) {
               </p>
               <Button 
                 variant="outline" 
-                className="w-full"
+                className="w-full h-11 border-2 border-[var(--color-energy-blue)] text-[var(--color-energy-blue)] hover:bg-[var(--color-energy-blue)] hover:text-white transition-all duration-300"
                 onClick={() => onPageChange('login')}
               >
+                <ArrowLeft className="w-4 h-4 mr-2" />
                 {t.signInHere}
               </Button>
             </div>

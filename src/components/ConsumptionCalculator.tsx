@@ -27,7 +27,11 @@ import {
   WashingMachine,
   Plus,
   Trash2,
-  ArrowRight
+  ArrowRight,
+  Sun,
+  Leaf,
+  DollarSign,
+  Award
 } from 'lucide-react';
 
 interface CalculationResult {
@@ -58,7 +62,7 @@ interface CommonAppliance {
 
 export function ConsumptionCalculator() {
   const { language } = useLanguage();
-  const [activeTab, setActiveTab] = useState('bill');
+  const [activeTab, setActiveTab] = useState('solar');
   const [calculationMethod, setCalculationMethod] = useState<'units' | 'readings'>('readings');
   const [tariffType, setTariffType] = useState('residential');
   const [previousReading, setPreviousReading] = useState('');
@@ -73,6 +77,11 @@ export function ConsumptionCalculator() {
   const [customWattage, setCustomWattage] = useState('');
   const [hoursPerDay, setHoursPerDay] = useState('');
   const [quantity, setQuantity] = useState('1');
+
+  // Solar Calculator State
+  const [solarRoofArea, setSolarRoofArea] = useState('');
+  const [solarMonthlyBill, setSolarMonthlyBill] = useState('');
+  const [solarSystemCapacity, setSolarSystemCapacity] = useState('');
 
   const commonAppliances: CommonAppliance[] = [
     { name: 'LED Bulb (10W)', nameMr: 'LED बल्ब (10W)', watts: 10, icon: Lightbulb },
@@ -238,6 +247,58 @@ export function ConsumptionCalculator() {
   const applianceConsumption = calculateApplianceConsumption();
   const selectedTariff = tariffRates[tariffType as keyof typeof tariffRates];
 
+  // Solar Calculator Functions
+  const calculateSolarSavings = () => {
+    const bill = parseFloat(solarMonthlyBill);
+    const area = parseFloat(solarRoofArea);
+    const capacity = parseFloat(solarSystemCapacity);
+    
+    if (isNaN(bill) && isNaN(area) && isNaN(capacity)) return null;
+    
+    // Calculate based on available inputs
+    let estimatedCapacity = capacity;
+    if (!estimatedCapacity && area) {
+      estimatedCapacity = area / 10; // Rough estimate: 1kW per 10 sq.m
+    }
+    if (!estimatedCapacity) return null;
+    
+    const annualGeneration = estimatedCapacity * 1500; // ~1500 units per kW per year
+    const monthlyGeneration = annualGeneration / 12;
+    const annualSavings = annualGeneration * 6; // Assuming ₹6 per unit
+    const monthlySavings = annualSavings / 12;
+    const systemCost = estimatedCapacity * 50000; // ₹50,000 per kW
+    
+    // Calculate subsidy (PM Surya Ghar scheme)
+    let subsidy = 0;
+    if (estimatedCapacity <= 3) {
+      subsidy = estimatedCapacity * 30000; // ₹30,000 per kW for first 3 kW
+    } else {
+      subsidy = 90000 + (estimatedCapacity - 3) * 18000; // ₹90,000 for first 3kW + ₹18,000 per additional kW
+    }
+    subsidy = Math.min(subsidy, 78000); // Max ₹78,000
+    
+    const netCost = systemCost - subsidy;
+    const paybackPeriod = netCost / annualSavings;
+    const savings25Years = (annualSavings * 25) - netCost;
+    const co2Saved = annualGeneration * 0.82; // 0.82 kg CO2 per kWh
+    
+    return {
+      capacity: estimatedCapacity.toFixed(2),
+      annualGeneration: annualGeneration.toFixed(0),
+      monthlyGeneration: monthlyGeneration.toFixed(0),
+      annualSavings: annualSavings.toFixed(0),
+      monthlySavings: monthlySavings.toFixed(0),
+      systemCost: systemCost.toFixed(0),
+      subsidy: subsidy.toFixed(0),
+      netCost: netCost.toFixed(0),
+      paybackPeriod: paybackPeriod.toFixed(1),
+      savings25Years: savings25Years.toFixed(0),
+      co2Saved: co2Saved.toFixed(0)
+    };
+  };
+
+  const solarSavings = calculateSolarSavings();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-background pt-20 sm:pt-24 pb-8 sm:pb-12 px-4">
       <div className="max-w-6xl mx-auto">
@@ -251,19 +312,19 @@ export function ConsumptionCalculator() {
           <div className="flex items-center justify-center mb-4">
             <Calculator className="w-10 h-10 sm:w-12 sm:h-12 text-primary mr-3" />
             <h1 className="text-primary">
-              {language === 'mr' ? 'विद्युत बिल कॅल्क्युलेटर' : 'Electricity Bill Calculator'}
+              {language === 'mr' ? 'ऊर्जा कॅल्क्युलेटर' : 'Energy Calculator'}
             </h1>
           </div>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             {language === 'mr' 
-              ? 'आपल्या मीटर रीडिंगच्या आधारावर अंदाजे बिल रक्कम मोजा. लॉगिन आवश्यक नाही.'
-              : 'Calculate your estimated bill amount based on meter readings. No login required.'}
+              ? 'बिल, उपकरणे आणि सौर बचत मोजा. लॉगिन आवश्यक नाही.'
+              : 'Calculate bills, appliance consumption, and solar savings. No login required.'}
           </p>
         </motion.div>
 
-        {/* Tabs for Bill Calculator and Appliance Calculator */}
+        {/* Tabs for Bill Calculator, Appliance Calculator, and Solar Calculator */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-3">
             <TabsTrigger value="bill" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
               {language === 'mr' ? 'बिल गणना' : 'Bill Calculator'}
@@ -271,6 +332,10 @@ export function ConsumptionCalculator() {
             <TabsTrigger value="appliances" className="flex items-center gap-2">
               <Zap className="w-4 h-4" />
               {language === 'mr' ? 'उपकरणे' : 'Appliances'}
+            </TabsTrigger>
+            <TabsTrigger value="solar" className="flex items-center gap-2">
+              <Sun className="w-4 h-4" />
+              {language === 'mr' ? 'सौर' : 'Solar'}
             </TabsTrigger>
           </TabsList>
 
@@ -884,6 +949,328 @@ export function ConsumptionCalculator() {
                           {language === 'mr' 
                             ? 'वापर पाहण्यासाठी उपकरणे जोडा'
                             : 'Add appliances to see consumption'}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="solar" className="mt-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+              {/* Solar Calculator Input */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="lg:col-span-2"
+              >
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Sun className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-[#FFD700]" />
+                      {language === 'mr' ? 'सौर बचत कॅल्क्युलेटर' : 'Solar Savings Calculator'}
+                    </CardTitle>
+                    <CardDescription>
+                      {language === 'mr' 
+                        ? 'सौर ऊर्जेच्या बचतीची गणना करा आणि ROI पहा'
+                        : 'Calculate solar energy savings and return on investment'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Input Method Info */}
+                    <div className="p-4 bg-gradient-to-r from-[#FFD700]/10 to-[#FFA500]/10 rounded-lg border border-[#FFD700]/30">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-[#FFA500] flex-shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="font-medium mb-1">
+                            {language === 'mr' ? 'कोणतीही एक पद्धत वापरा:' : 'Use any one method:'}
+                          </p>
+                          <ul className="text-xs text-muted-foreground space-y-1">
+                            <li>• {language === 'mr' ? 'छप्पराचे क्षेत्र किंवा' : 'Roof area OR'}</li>
+                            <li>• {language === 'mr' ? 'मासिक वीज बिल किंवा' : 'Monthly electricity bill OR'}</li>
+                            <li>• {language === 'mr' ? 'इच्छित सौर क्षमता' : 'Desired solar capacity'}</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Input Fields */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                      <div className="space-y-3">
+                        <Label htmlFor="roofArea">
+                          {language === 'mr' ? 'छप्पर क्षेत्र (चौ.मी)' : 'Roof Area (sq.m)'}
+                        </Label>
+                        <Input
+                          id="roofArea"
+                          type="number"
+                          placeholder={language === 'mr' ? 'उदा. 100' : 'e.g. 100'}
+                          value={solarRoofArea}
+                          onChange={(e) => setSolarRoofArea(e.target.value)}
+                          className="text-center"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {language === 'mr' ? '1 kW ≈ 10 चौ.मी' : '1 kW ≈ 10 sq.m'}
+                        </p>
+                      </div>
+                      <div className="space-y-3">
+                        <Label htmlFor="monthlyBill">
+                          {language === 'mr' ? 'मासिक वीज बिल (₹)' : 'Monthly Bill (₹)'}
+                        </Label>
+                        <Input
+                          id="monthlyBill"
+                          type="number"
+                          placeholder={language === 'mr' ? 'उदा. 3000' : 'e.g. 3000'}
+                          value={solarMonthlyBill}
+                          onChange={(e) => setSolarMonthlyBill(e.target.value)}
+                          className="text-center"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {language === 'mr' ? 'सरासरी मासिक बिल' : 'Average monthly bill'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Separator className="flex-1" />
+                      <span className="text-xs text-muted-foreground">
+                        {language === 'mr' ? 'किंवा' : 'OR'}
+                      </span>
+                      <Separator className="flex-1" />
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="systemCapacity">
+                        {language === 'mr' ? 'सौर प्रणाली क्षमता (kW)' : 'Solar System Capacity (kW)'}
+                      </Label>
+                      <Input
+                        id="systemCapacity"
+                        type="number"
+                        step="0.5"
+                        placeholder={language === 'mr' ? 'उदा. 3' : 'e.g. 3'}
+                        value={solarSystemCapacity}
+                        onChange={(e) => setSolarSystemCapacity(e.target.value)}
+                        className="text-center"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {language === 'mr' 
+                          ? 'निवासी: 1-10 kW | व्यावसायिक: 10-100 kW'
+                          : 'Residential: 1-10 kW | Commercial: 10-100 kW'}
+                      </p>
+                    </div>
+
+                    <Separator />
+
+                    {/* Solar Benefits Info */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="flex gap-3 p-3 bg-white/50 dark:bg-black/10 rounded-lg">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#FFD700] to-[#FFA500] flex items-center justify-center flex-shrink-0">
+                          <DollarSign className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h5 className="text-sm font-medium mb-1">
+                            {language === 'mr' ? 'बिल बचत' : 'Bill Savings'}
+                          </h5>
+                          <p className="text-xs text-muted-foreground">
+                            {language === 'mr' ? '70-90% पर्यंत' : 'Up to 70-90%'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 p-3 bg-white/50 dark:bg-black/10 rounded-lg">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#00BFFF] to-[#0080FF] flex items-center justify-center flex-shrink-0">
+                          <Award className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h5 className="text-sm font-medium mb-1">
+                            {language === 'mr' ? 'सरकारी सबसिडी' : 'Govt Subsidy'}
+                          </h5>
+                          <p className="text-xs text-muted-foreground">
+                            {language === 'mr' ? '₹78,000 पर्यंत' : 'Up to ₹78,000'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 p-3 bg-white/50 dark:bg-black/10 rounded-lg">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#10b981] to-[#059669] flex items-center justify-center flex-shrink-0">
+                          <Leaf className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h5 className="text-sm font-medium mb-1">
+                            {language === 'mr' ? 'पर्यावरण मैत्री' : 'Eco-Friendly'}
+                          </h5>
+                          <p className="text-xs text-muted-foreground">
+                            {language === 'mr' ? 'स्वच्छ ऊर्जा' : 'Clean Energy'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 p-3 bg-white/50 dark:bg-black/10 rounded-lg">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#f59e0b] to-[#d97706] flex items-center justify-center flex-shrink-0">
+                          <TrendingUp className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h5 className="text-sm font-medium mb-1">
+                            {language === 'mr' ? 'दीर्घकालीन ROI' : 'Long-term ROI'}
+                          </h5>
+                          <p className="text-xs text-muted-foreground">
+                            {language === 'mr' ? '25+ वर्षे सेवा' : '25+ years service'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Solar Results Display */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="lg:col-span-1"
+              >
+                <Card className="glass-card sticky top-24">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
+                      {language === 'mr' ? 'बचत विश्लेषण' : 'Savings Analysis'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {solarSavings ? (
+                      <div className="space-y-4">
+                        {/* Recommended Capacity */}
+                        <div className="text-center p-4 bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/20 rounded-lg border-2 border-[#FFD700]/30">
+                          <div className="flex items-center justify-center mb-2">
+                            <Sun className="w-6 h-6 text-[#FFA500] mr-2" />
+                            <span className="text-sm text-muted-foreground">
+                              {language === 'mr' ? 'अनुशंसित क्षमता' : 'Recommended Capacity'}
+                            </span>
+                          </div>
+                          <p className="text-3xl font-bold text-[#FFA500]">
+                            {solarSavings.capacity} kW
+                          </p>
+                        </div>
+
+                        <Separator />
+
+                        {/* Key Metrics */}
+                        <div className="space-y-3">
+                          <div className="p-3 bg-gradient-to-br from-[#00BFFF]/10 to-[#0080FF]/10 rounded-lg">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Zap className="w-4 h-4 text-[#00BFFF]" />
+                              <span className="text-xs text-muted-foreground">
+                                {language === 'mr' ? 'मासिक उत्पादन' : 'Monthly Generation'}
+                              </span>
+                            </div>
+                            <p className="text-xl font-bold text-[#00BFFF]">
+                              {solarSavings.monthlyGeneration} kWh
+                            </p>
+                          </div>
+
+                          <div className="p-3 bg-gradient-to-br from-[#10b981]/10 to-[#059669]/10 rounded-lg">
+                            <div className="flex items-center gap-2 mb-1">
+                              <IndianRupee className="w-4 h-4 text-[#10b981]" />
+                              <span className="text-xs text-muted-foreground">
+                                {language === 'mr' ? 'मासिक बचत' : 'Monthly Savings'}
+                              </span>
+                            </div>
+                            <p className="text-xl font-bold text-[#10b981]">
+                              ₹{parseFloat(solarSavings.monthlySavings).toLocaleString('en-IN')}
+                            </p>
+                          </div>
+
+                          <div className="p-3 bg-gradient-to-br from-[#f59e0b]/10 to-[#d97706]/10 rounded-lg">
+                            <div className="flex items-center gap-2 mb-1">
+                              <TrendingUp className="w-4 h-4 text-[#f59e0b]" />
+                              <span className="text-xs text-muted-foreground">
+                                {language === 'mr' ? 'परतावा कालावधी' : 'Payback Period'}
+                              </span>
+                            </div>
+                            <p className="text-xl font-bold text-[#f59e0b]">
+                              {solarSavings.paybackPeriod} {language === 'mr' ? 'वर्षे' : 'years'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Financial Breakdown */}
+                        <div className="space-y-2 text-sm">
+                          <h5 className="font-medium mb-3">
+                            {language === 'mr' ? 'आर्थिक तपशील' : 'Financial Details'}
+                          </h5>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">
+                              {language === 'mr' ? 'प्रणाली खर्च' : 'System Cost'}
+                            </span>
+                            <span className="font-medium">
+                              ₹{parseFloat(solarSavings.systemCost).toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-green-600">
+                            <span>
+                              {language === 'mr' ? 'सरकारी सबसिडी' : 'Govt Subsidy'}
+                            </span>
+                            <span className="font-medium">
+                              - ₹{parseFloat(solarSavings.subsidy).toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <Separator />
+                          <div className="flex justify-between font-bold text-primary">
+                            <span>
+                              {language === 'mr' ? 'तुमची गुंतवणूक' : 'Your Investment'}
+                            </span>
+                            <span>
+                              ₹{parseFloat(solarSavings.netCost).toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Long-term Savings */}
+                        <div className="p-4 bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg">
+                          <p className="text-xs text-muted-foreground mb-2">
+                            {language === 'mr' ? '25 वर्षांत एकूण बचत' : 'Total Savings in 25 Years'}
+                          </p>
+                          <p className="text-2xl font-bold text-primary">
+                            ₹{parseFloat(solarSavings.savings25Years).toLocaleString('en-IN')}
+                          </p>
+                        </div>
+
+                        {/* Environmental Impact */}
+                        <div className="flex items-start gap-2 p-3 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 rounded-lg">
+                          <Leaf className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-green-700 dark:text-green-300 mb-1">
+                              {language === 'mr' ? 'पर्यावरण प्रभाव' : 'Environmental Impact'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {language === 'mr' 
+                                ? `${parseFloat(solarSavings.co2Saved).toLocaleString('en-IN')} किलो CO₂ बचत/वर्ष`
+                                : `${parseFloat(solarSavings.co2Saved).toLocaleString('en-IN')} kg CO₂ saved/year`}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Note */}
+                        <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg text-xs text-muted-foreground">
+                          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                          <p>
+                            {language === 'mr' 
+                              ? 'ही अंदाजे गणना आहे. वास्तविक परिणाम वेगळे असू शकतात.'
+                              : 'This is an approximate calculation. Actual results may vary.'}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Sun className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                        <p className="text-sm">
+                          {language === 'mr' 
+                            ? 'तपशील भरा आणि बचत पहा'
+                            : 'Fill in the details to see savings'}
                         </p>
                       </div>
                     )}

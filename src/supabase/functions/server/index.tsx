@@ -41,7 +41,7 @@ async function verifyUser(authHeader: string | null) {
 // ============ AUTH ROUTES ============
 
 // Sign Up
-app.post('/make-server-ee8e359e/auth/signup', async (c) => {
+app.post('/make-server-6d937304/auth/signup', async (c) => {
   try {
     const body = await c.req.json();
     const { email, password, name, phone } = body;
@@ -90,7 +90,7 @@ app.post('/make-server-ee8e359e/auth/signup', async (c) => {
 });
 
 // Get User Profile
-app.get('/make-server-ee8e359e/auth/profile', async (c) => {
+app.get('/make-server-6d937304/auth/profile', async (c) => {
   try {
     const { error, user } = await verifyUser(c.req.header('Authorization'));
     if (error || !user) {
@@ -110,7 +110,7 @@ app.get('/make-server-ee8e359e/auth/profile', async (c) => {
 });
 
 // Update User Profile
-app.put('/make-server-ee8e359e/auth/profile', async (c) => {
+app.put('/make-server-6d937304/auth/profile', async (c) => {
   try {
     const { error, user } = await verifyUser(c.req.header('Authorization'));
     if (error || !user) {
@@ -144,7 +144,7 @@ app.put('/make-server-ee8e359e/auth/profile', async (c) => {
 // ============ CONSUMER ROUTES ============
 
 // Add Consumer
-app.post('/make-server-ee8e359e/consumers', async (c) => {
+app.post('/make-server-6d937304/consumers', async (c) => {
   try {
     const { error, user } = await verifyUser(c.req.header('Authorization'));
     if (error || !user) {
@@ -195,7 +195,7 @@ app.post('/make-server-ee8e359e/consumers', async (c) => {
 });
 
 // Get User's Consumers
-app.get('/make-server-ee8e359e/consumers', async (c) => {
+app.get('/make-server-6d937304/consumers', async (c) => {
   try {
     const { error, user } = await verifyUser(c.req.header('Authorization'));
     if (error || !user) {
@@ -235,7 +235,7 @@ app.get('/make-server-ee8e359e/consumers', async (c) => {
 });
 
 // Get Consumer Details
-app.get('/make-server-ee8e359e/consumers/:consumerNumber', async (c) => {
+app.get('/make-server-6d937304/consumers/:consumerNumber', async (c) => {
   try {
     const { error, user } = await verifyUser(c.req.header('Authorization'));
     if (error || !user) {
@@ -277,10 +277,50 @@ app.get('/make-server-ee8e359e/consumers/:consumerNumber', async (c) => {
   }
 });
 
+// Remove Consumer from User Account
+app.delete('/make-server-6d937304/consumers/:consumerNumber', async (c) => {
+  try {
+    const { error, user } = await verifyUser(c.req.header('Authorization'));
+    if (error || !user) {
+      return c.json({ error: error || 'Unauthorized' }, 401);
+    }
+
+    const consumerNumber = c.req.param('consumerNumber');
+    const consumer = await kv.get(`consumer:${consumerNumber}`);
+
+    if (!consumer) {
+      return c.json({ error: 'Consumer not found' }, 404);
+    }
+
+    // Verify ownership
+    if (consumer.userId !== user.id) {
+      return c.json({ error: 'Access denied' }, 403);
+    }
+
+    // Remove consumer from user's profile
+    const profile = await kv.get(`user:${user.id}`);
+    if (profile) {
+      const updatedProfile = {
+        ...profile,
+        consumers: (profile.consumers || []).filter((num: string) => num !== consumerNumber)
+      };
+      await kv.set(`user:${user.id}`, updatedProfile);
+    }
+
+    // Delete the consumer record
+    await kv.del(`consumer:${consumerNumber}`);
+
+    return c.json({ message: 'Consumer removed successfully' });
+  } catch (error) {
+    console.log('Remove consumer error:', error);
+    return c.json({ error: 'Failed to remove consumer: ' + error.message }, 500);
+  }
+});
+
 // ============ BILL ROUTES ============
 
 // Create Bill (Admin/System)
-app.post('/make-server-ee8e359e/bills', async (c) => {
+app.post('/make-server-6d937304/bills', async (c) => {
   try {
     const body = await c.req.json();
     const { 
@@ -334,7 +374,7 @@ app.post('/make-server-ee8e359e/bills', async (c) => {
 });
 
 // Pay Bill
-app.post('/make-server-ee8e359e/bills/:billId/pay', async (c) => {
+app.post('/make-server-6d937304/bills/:billId/pay', async (c) => {
   try {
     const { error, user } = await verifyUser(c.req.header('Authorization'));
     if (error || !user) {
@@ -396,7 +436,7 @@ app.post('/make-server-ee8e359e/bills/:billId/pay', async (c) => {
 // ============ SERVICE REQUEST ROUTES ============
 
 // Create Service Request
-app.post('/make-server-ee8e359e/service-requests', async (c) => {
+app.post('/make-server-6d937304/service-requests', async (c) => {
   try {
     const { error, user } = await verifyUser(c.req.header('Authorization'));
     if (error || !user) {
@@ -437,7 +477,7 @@ app.post('/make-server-ee8e359e/service-requests', async (c) => {
 });
 
 // Get User's Service Requests
-app.get('/make-server-ee8e359e/service-requests', async (c) => {
+app.get('/make-server-6d937304/service-requests', async (c) => {
   try {
     const { error, user } = await verifyUser(c.req.header('Authorization'));
     if (error || !user) {
@@ -461,7 +501,7 @@ app.get('/make-server-ee8e359e/service-requests', async (c) => {
 // ============ ANNOUNCEMENTS ROUTES ============
 
 // Get Announcements
-app.get('/make-server-ee8e359e/announcements', async (c) => {
+app.get('/make-server-6d937304/announcements', async (c) => {
   try {
     const announcements = await kv.getByPrefix('announcement:');
     const sortedAnnouncements = announcements.sort((a: any, b: any) => 
@@ -476,7 +516,7 @@ app.get('/make-server-ee8e359e/announcements', async (c) => {
 });
 
 // Create Announcement (Admin only)
-app.post('/make-server-ee8e359e/announcements', async (c) => {
+app.post('/make-server-6d937304/announcements', async (c) => {
   try {
     const body = await c.req.json();
     const { title, titleMr, description, descriptionMr, type, priority } = body;
@@ -509,7 +549,7 @@ app.post('/make-server-ee8e359e/announcements', async (c) => {
 });
 
 // Health check
-app.get('/make-server-ee8e359e/health', (c) => {
+app.get('/make-server-6d937304/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 

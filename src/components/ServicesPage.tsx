@@ -133,7 +133,14 @@ export function ServicesPage({ onPageChange }: ServicesPageProps) {
                     ))}
                   </div>
                   
-                  <Button className="w-full group">
+                  <Button 
+                    className="w-full group"
+                    onClick={() => {
+                      if (service.title === t.solarInitiatives) {
+                        onPageChange('solar-initiatives');
+                      }
+                    }}
+                  >
                     Get Started
                     <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </Button>

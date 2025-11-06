@@ -11,9 +11,8 @@ import { SmartGridPage } from './components/SmartGridPage';
 import { EnergyInsightsPage } from './components/EnergyInsightsPage';
 import { PaymentPage } from './components/PaymentPage';
 import { ConsumptionCalculator } from './components/ConsumptionCalculator';
-import { SetupPage } from './components/SetupPage';
+import { SolarInitiativePage } from './components/SolarInitiativePage';
 import { Toaster } from './components/ui/sonner';
-import { supabase } from './utils/supabase/client';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('landing');
@@ -28,26 +27,9 @@ export default function App() {
       document.documentElement.classList.add('dark');
     }
 
-    // Check for existing session
-    const checkSession = async () => {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        try {
-          const { data, error } = await supabase.auth.getSession();
-          if (data.session) {
-            setIsLoggedIn(true);
-          } else {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('user_id');
-          }
-        } catch (error) {
-          console.error('Session check error:', error);
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('user_id');
-        }
-      }
-    };
-    checkSession();
+    // Check for existing session (simple localStorage check)
+    const isUserLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    setIsLoggedIn(isUserLoggedIn);
 
     // Mobile viewport height fix for iOS
     const setVH = () => {
@@ -67,17 +49,13 @@ export default function App() {
 
   const handleLogin = () => {
     setIsLoggedIn(true);
+    localStorage.setItem('isLoggedIn', 'true');
   };
 
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user_id');
+  const handleLogout = () => {
     setIsLoggedIn(false);
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userEmail');
     setCurrentPage('landing');
   };
 
@@ -124,13 +102,13 @@ export default function App() {
       case 'energy-insights':
         return <EnergyInsightsPage />;
       case 'register':
-        return <RegistrationPage onPageChange={handlePageChange} />;
+        return <RegistrationPage onPageChange={handlePageChange} onLogin={handleLogin} />;
       case 'payment':
         return <PaymentPage onPageChange={handlePageChange} />;
       case 'calculator':
         return <ConsumptionCalculator />;
-      case 'setup':
-        return <SetupPage onPageChange={handlePageChange} />;
+      case 'solar-initiatives':
+        return <SolarInitiativePage onPageChange={handlePageChange} />;
       default:
         return <LandingPage onPageChange={handlePageChange} />;
     }

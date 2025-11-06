@@ -307,6 +307,10 @@ html {
     animation: gradient 3s ease infinite;
   }
   
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s ease-in-out infinite;
+  }
+  
   @keyframes pulse-energy {
     0%, 100% {
       opacity: 1;
@@ -315,6 +319,15 @@ html {
     50% {
       opacity: 0.8;
       box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+    }
+  }
+  
+  @keyframes pulse-subtle {
+    0%, 100% {
+      box-shadow: 0 10px 40px rgba(255, 215, 0, 0.4);
+    }
+    50% {
+      box-shadow: 0 15px 60px rgba(255, 215, 0, 0.6);
     }
   }
   

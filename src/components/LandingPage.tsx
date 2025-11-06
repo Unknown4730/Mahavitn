@@ -126,23 +126,6 @@ export function LandingPage({ onPageChange }: LandingPageProps) {
                   {t.consumerServices}
                 </Button>
               </div>
-              
-              {/* First Time User Notice */}
-              <div className="flex justify-center">
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-950/30 rounded-full border border-blue-200 dark:border-blue-800">
-                  <span className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">
-                    {language === 'mr' ? '🎉 पहिल्यांदा येथे?' : '🎉 First time here?'}
-                  </span>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="text-xs sm:text-sm h-auto p-0 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-                    onClick={() => onPageChange('setup')}
-                  >
-                    {language === 'mr' ? 'सेटअप पृष्ठ →' : 'Setup Page →'}
-                  </Button>
-                </div>
-              </div>
             </div>
           </motion.div>
         </div>
@@ -236,7 +219,15 @@ export function LandingPage({ onPageChange }: LandingPageProps) {
                     </div>
                     <CardContent className="p-6">
                       <p className="text-muted-foreground mb-4">{service.description}</p>
-                      <Button variant="outline" className="w-full">
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => {
+                          if (service.title === t.solarInitiatives) {
+                            onPageChange('solar-initiatives');
+                          }
+                        }}
+                      >
                         {t.learnMore}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>

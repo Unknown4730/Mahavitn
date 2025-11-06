@@ -13,7 +13,6 @@ import {
   Zap,
   ArrowLeft
 } from 'lucide-react';
-import { supabase } from '../utils/supabase/client';
 import { toast } from 'sonner';
 
 interface LoginPageProps {
@@ -40,43 +39,14 @@ export function LoginPage({ onLogin, onPageChange }: LoginPageProps) {
 
     setIsLoading(true);
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (error) {
-        console.error('Login error:', error);
-        
-        // Provide user-friendly error messages
-        if (error.message.includes('Invalid login credentials')) {
-          toast.error('Invalid email or password. Please check your credentials or register a new account.');
-        } else if (error.message.includes('Email not confirmed')) {
-          toast.error('Please confirm your email address first.');
-        } else {
-          toast.error('Login failed: ' + error.message);
-        }
-        
-        setIsLoading(false);
-        return;
-      }
-
-      if (data.session) {
-        // Store access token
-        localStorage.setItem('access_token', data.session.access_token);
-        localStorage.setItem('user_id', data.user.id);
-        
-        toast.success('Login successful!');
-        setIsLoading(false);
-        onLogin();
-        onPageChange('dashboard');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      toast.error('Login failed. Please try again.');
+    // Simple mock authentication - accept any credentials
+    setTimeout(() => {
+      localStorage.setItem('userEmail', formData.email);
+      toast.success('Login successful!');
       setIsLoading(false);
-    }
+      onLogin();
+      onPageChange('dashboard');
+    }, 800);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -164,9 +134,10 @@ export function LoginPage({ onLogin, onPageChange }: LoginPageProps) {
 
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-[var(--color-energy-blue)] to-[var(--color-energy-navy)] hover:shadow-lg"
+                className="w-full h-12 text-lg bg-gradient-to-r from-[#FFD700] to-[#FFA500] hover:from-[#FFA500] hover:to-[#FFD700] text-[var(--color-energy-navy)] shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 animate-pulse-subtle"
                 disabled={isLoading}
               >
+                <Zap className="w-5 h-5 mr-2" />
                 {isLoading ? 'Signing in...' : t.login}
               </Button>
             </form>
@@ -184,20 +155,6 @@ export function LoginPage({ onLogin, onPageChange }: LoginPageProps) {
               >
                 {t.register}
               </Button>
-              
-              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-                  💡 <strong>First time here?</strong> Please register a new account to get started. The login credentials will only work after you've created an account.
-                </p>
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="text-xs h-auto p-0 text-blue-600 dark:text-blue-400"
-                  onClick={() => onPageChange('setup')}
-                >
-                  → Or use the Setup Page to create a demo account
-                </Button>
-              </div>
             </div>
 
             <div className="mt-6">
@@ -212,12 +169,6 @@ export function LoginPage({ onLogin, onPageChange }: LoginPageProps) {
             </div>
           </CardContent>
         </Card>
-
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>Demo credentials:</p>
-          <p>Email: demo@mahavitaran.com or Phone: +91 9876543210</p>
-          <p>Password: demo123</p>
-        </div>
       </div>
     </div>
   );
