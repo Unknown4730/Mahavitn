@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Skeleton } from './ui/skeleton';
 import { Alert, AlertDescription } from './ui/alert';
 import { useLanguage } from './LanguageContext';
-import { mockConsumers, mockUsageData, mockUsageDataMarathi, mockAnnouncements } from './mockData';
+import { useConsumers, useConsumerDetails, useAnnouncements, useUserProfile, formatCurrency, formatMonthName } from './hooks/useLiveData';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { 
   Search, 
@@ -60,27 +60,28 @@ export function Dashboard({ isLoggedIn, onPageChange }: DashboardProps) {
   const [showAddConsumer, setShowAddConsumer] = useState(false);
   const [newConsumerNumber, setNewConsumerNumber] = useState('');
   
-  // Use mock data
-  const consumers = mockConsumers;
-  const announcements = mockAnnouncements;
-  const loadingAnnouncements = false;
-  const userProfile = { name: 'User' };
+  // Fetch live data from Supabase
+  const { consumers, loading: loadingConsumers, error: consumersError, refetch } = useConsumers();
+  const { announcements, loading: loadingAnnouncements } = useAnnouncements();
+  const { profile: userProfile } = useUserProfile();
   
   // Select first consumer by default
-  const [selectedConsumerNumber, setSelectedConsumerNumber] = useState<string>(consumers[0]?.consumerNumber || '');
-  const selectedConsumer = consumers.find(c => c.consumerNumber === selectedConsumerNumber) || consumers[0];
+  const [selectedConsumerNumber, setSelectedConsumerNumber] = useState<string | null>(null);
+  const { consumer: selectedConsumer, bills, usageHistory, loading: loadingDetails } = useConsumerDetails(selectedConsumerNumber);
   
-  // Use mock usage data based on language
-  const usageData = language === 'mr' ? mockUsageDataMarathi : mockUsageData;
+  // Auto-select first consumer when data loads
+  useEffect(() => {
+    if (consumers.length > 0 && !selectedConsumerNumber) {
+      setSelectedConsumerNumber(consumers[0].consumerNumber);
+    }
+  }, [consumers, selectedConsumerNumber]);
   
-  // Helper to format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
+  // Transform usage history for charts
+  const usageData = usageHistory.map(item => ({
+    month: formatMonthName(item.month, language),
+    units: item.units,
+    amount: item.amount
+  }));
   
   // Simple mock detailed stats
   const detailedStats = {
@@ -377,7 +378,7 @@ export function Dashboard({ isLoggedIn, onPageChange }: DashboardProps) {
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
-                            <Label>{language === 'mr' ? 'िल क्रमांक' : 'Bill Number'}</Label>
+                            <Label>{language === 'mr' ? '��िल क्रमांक' : 'Bill Number'}</Label>
                             <p className="font-mono">BILL/2024/001234</p>
                           </div>
                           <div>
@@ -417,7 +418,7 @@ export function Dashboard({ isLoggedIn, onPageChange }: DashboardProps) {
                     <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle className="text-center">
-                          {language === 'mr' ? 'मीटर रीडिं तपशील' : 'Meter Reading Details'}
+                          {language === 'mr' ? 'मीटर रीडिं�� तपशील' : 'Meter Reading Details'}
                         </DialogTitle>
                         <DialogDescription className="text-center">
                           {language === 'mr' 

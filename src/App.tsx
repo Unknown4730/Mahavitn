@@ -12,7 +12,9 @@ import { EnergyInsightsPage } from './components/EnergyInsightsPage';
 import { PaymentPage } from './components/PaymentPage';
 import { ConsumptionCalculator } from './components/ConsumptionCalculator';
 import { SolarInitiativePage } from './components/SolarInitiativePage';
+import { DataInitializer } from './components/DataInitializer';
 import { Toaster } from './components/ui/sonner';
+import { createClient } from './utils/supabase/client';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('landing');
@@ -27,9 +29,37 @@ export default function App() {
       document.documentElement.classList.add('dark');
     }
 
-    // Check for existing session (simple localStorage check)
-    const isUserLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    setIsLoggedIn(isUserLoggedIn);
+    // Check for existing session
+    const checkSession = async () => {
+      try {
+        // Check localStorage first for quick feedback
+        const token = localStorage.getItem('access_token');
+        if (token) {
+          // Verify the token is still valid with Supabase
+          const supabase = createClient();
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (session && !error) {
+            // Update localStorage with fresh session data
+            localStorage.setItem('access_token', session.access_token);
+            localStorage.setItem('user_id', session.user.id);
+            localStorage.setItem('user_email', session.user.email || '');
+            localStorage.setItem('user_name', session.user.user_metadata?.name || '');
+            setIsLoggedIn(true);
+          } else {
+            // Clear invalid session
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('user_email');
+            localStorage.removeItem('user_name');
+            setIsLoggedIn(false);
+          }
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
+      }
+    };
+    checkSession();
 
     // Mobile viewport height fix for iOS
     const setVH = () => {
@@ -49,13 +79,14 @@ export default function App() {
 
   const handleLogin = () => {
     setIsLoggedIn(true);
-    localStorage.setItem('isLoggedIn', 'true');
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('user_email');
+    localStorage.removeItem('user_name');
     setIsLoggedIn(false);
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('userEmail');
     setCurrentPage('landing');
   };
 
@@ -102,13 +133,15 @@ export default function App() {
       case 'energy-insights':
         return <EnergyInsightsPage />;
       case 'register':
-        return <RegistrationPage onPageChange={handlePageChange} onLogin={handleLogin} />;
+        return <RegistrationPage onPageChange={handlePageChange} />;
       case 'payment':
         return <PaymentPage onPageChange={handlePageChange} />;
       case 'calculator':
         return <ConsumptionCalculator />;
       case 'solar-initiatives':
         return <SolarInitiativePage onPageChange={handlePageChange} />;
+      case 'data-init':
+        return <DataInitializer />;
       default:
         return <LandingPage onPageChange={handlePageChange} />;
     }

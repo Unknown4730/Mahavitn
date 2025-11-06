@@ -13,7 +13,8 @@ import {
   Zap,
   ArrowLeft
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
+import { createClient } from '../utils/supabase/client';
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -39,14 +40,43 @@ export function LoginPage({ onLogin, onPageChange }: LoginPageProps) {
 
     setIsLoading(true);
 
-    // Simple mock authentication - accept any credentials
-    setTimeout(() => {
-      localStorage.setItem('userEmail', formData.email);
+    try {
+      const supabase = createClient();
+      
+      // Sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) {
+        console.error('Login error:', error);
+        toast.error(error.message || 'Invalid email or password');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data.session || !data.user) {
+        toast.error('Login failed - no session created');
+        setIsLoading(false);
+        return;
+      }
+
+      // Store user session in localStorage
+      localStorage.setItem('access_token', data.session.access_token);
+      localStorage.setItem('user_id', data.user.id);
+      localStorage.setItem('user_email', data.user.email || '');
+      localStorage.setItem('user_name', data.user.user_metadata?.name || '');
+      
       toast.success('Login successful!');
       setIsLoading(false);
       onLogin();
       onPageChange('dashboard');
-    }, 800);
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Login failed. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -155,6 +185,14 @@ export function LoginPage({ onLogin, onPageChange }: LoginPageProps) {
               >
                 {t.register}
               </Button>
+            </div>
+
+            <div className="mt-6 p-4 bg-[var(--color-energy-blue)]/5 border border-[var(--color-energy-blue)]/20 rounded-lg">
+              <p className="text-sm font-semibold mb-2">Demo Credentials:</p>
+              <div className="text-sm space-y-1 font-mono">
+                <p>📧 demo@mahavitaran.com</p>
+                <p>🔐 demo123</p>
+              </div>
             </div>
 
             <div className="mt-6">

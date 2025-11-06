@@ -104,7 +104,7 @@ export function LandingPage({ onPageChange }: LandingPageProps) {
               {language === 'mr' ? "१९६० पासून महाराष्ट्राला वीज पुरवठा" : "Powering Maharashtra Since 1960"}
             </Badge>
             
-            <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-[var(--color-energy-blue)] to-[var(--color-energy-navy)] bg-clip-text text-transparent">
+            <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-[var(--color-energy-blue)] to-[var(--color-energy-navy)] bg-clip-text text-transparent my-8 text-center mx-auto text-[64px]">
               {t.welcomeTitle}
             </h1>
             

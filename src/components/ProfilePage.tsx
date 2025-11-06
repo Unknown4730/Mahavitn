@@ -6,7 +6,8 @@ import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { useLanguage } from './LanguageContext';
-import { mockUserProfile, mockConsumers } from './mockData';
+import { useUserProfile } from './hooks/useLiveData';
+import { authApi, consumerApi } from '../utils/api';
 import { toast } from 'sonner@2.0.3';
 import { 
   User, 
@@ -28,6 +29,7 @@ interface ProfilePageProps {
 
 export function ProfilePage({ onPageChange }: ProfilePageProps) {
   const { t, language } = useLanguage();
+  const { profile: userProfile, consumers, loading: dataLoading, error: dataError, refetch } = useUserProfile();
   
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingConsumer, setIsAddingConsumer] = useState(false);
@@ -39,12 +41,16 @@ export function ProfilePage({ onPageChange }: ProfilePageProps) {
   const [newConsumerAddress, setNewConsumerAddress] = useState('');
   const [newConsumerCategory, setNewConsumerCategory] = useState('Residential');
   
-  // Use mock data
-  const [userProfile, setUserProfile] = useState(mockUserProfile);
-  const [consumers, setConsumers] = useState(mockConsumers);
-  
-  const [editedName, setEditedName] = useState(userProfile.name);
-  const [editedPhone, setEditedPhone] = useState(userProfile.phone);
+  const [editedName, setEditedName] = useState('');
+  const [editedPhone, setEditedPhone] = useState('');
+
+  // Initialize edited values when profile loads
+  useEffect(() => {
+    if (userProfile) {
+      setEditedName(userProfile.name || '');
+      setEditedPhone(userProfile.phone || '');
+    }
+  }, [userProfile]);
 
   const handleSaveProfile = async () => {
     if (!editedName.trim()) {
@@ -53,13 +59,22 @@ export function ProfilePage({ onPageChange }: ProfilePageProps) {
     }
 
     setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
-      setUserProfile({ ...userProfile, name: editedName, phone: editedPhone });
-      toast.success('Profile updated successfully');
-      setIsEditing(false);
+    try {
+      const response = await authApi.updateProfile(editedName, editedPhone);
+      
+      if (response.error) {
+        toast.error(response.error);
+      } else {
+        toast.success('Profile updated successfully');
+        setIsEditing(false);
+        refetch();
+      }
+    } catch (error) {
+      toast.error('Failed to update profile');
+      console.error('Update profile error:', error);
+    } finally {
       setIsSaving(false);
-    }, 500);
+    }
   };
 
   const handleAddConsumer = async () => {
@@ -74,16 +89,31 @@ export function ProfilePage({ onPageChange }: ProfilePageProps) {
     }
 
     setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
-      toast.success('Consumer added successfully');
-      setNewConsumerNumber('');
-      setNewConsumerName('');
-      setNewConsumerAddress('');
-      setNewConsumerCategory('Residential');
-      setIsAddingConsumer(false);
+    try {
+      const response = await consumerApi.addConsumer(
+        newConsumerNumber.trim(),
+        newConsumerName.trim(),
+        newConsumerAddress.trim(),
+        newConsumerCategory
+      );
+      
+      if (response.error) {
+        toast.error(response.error);
+      } else {
+        toast.success('Consumer added successfully');
+        setNewConsumerNumber('');
+        setNewConsumerName('');
+        setNewConsumerAddress('');
+        setNewConsumerCategory('Residential');
+        setIsAddingConsumer(false);
+        refetch();
+      }
+    } catch (error) {
+      toast.error('Failed to add consumer');
+      console.error('Add consumer error:', error);
+    } finally {
       setIsSaving(false);
-    }, 500);
+    }
   };
 
   const handleRemoveConsumer = async (consumerNumber: string) => {
@@ -97,13 +127,44 @@ export function ProfilePage({ onPageChange }: ProfilePageProps) {
     }
 
     setIsRemoving(consumerNumber);
-    // Simulate API call
-    setTimeout(() => {
-      setConsumers(consumers.filter(c => c.consumerNumber !== consumerNumber));
-      toast.success('Consumer removed successfully');
+    try {
+      const response = await consumerApi.removeConsumer(consumerNumber);
+      
+      if (response.error) {
+        toast.error(response.error);
+      } else {
+        toast.success('Consumer removed successfully');
+        refetch();
+      }
+    } catch (error) {
+      toast.error('Failed to remove consumer');
+      console.error('Remove consumer error:', error);
+    } finally {
       setIsRemoving(null);
-    }, 500);
+    }
   };
+
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (dataError || !userProfile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{dataError || 'Failed to load profile'}</p>
+          <Button onClick={() => refetch()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 p-3 sm:p-4 md:p-6">
@@ -146,8 +207,8 @@ export function ProfilePage({ onPageChange }: ProfilePageProps) {
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => {
                       setIsEditing(false);
-                      setEditedName(userProfile.name);
-                      setEditedPhone(userProfile.phone);
+                      setEditedName(userProfile.name || '');
+                      setEditedPhone(userProfile.phone || '');
                     }}>
                       <X className="w-4 h-4" />
                     </Button>
@@ -179,7 +240,7 @@ export function ProfilePage({ onPageChange }: ProfilePageProps) {
                     <Input
                       id="email"
                       type="email"
-                      value={userProfile.email}
+                      value={userProfile.email || ''}
                       disabled
                       className="pl-10 bg-muted/50"
                     />
@@ -187,17 +248,17 @@ export function ProfilePage({ onPageChange }: ProfilePageProps) {
                   <p className="text-xs text-muted-foreground">Email cannot be changed</p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="phone">{t.phone}</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="phone"
-                      type="tel"
                       value={editedPhone}
                       onChange={(e) => setEditedPhone(e.target.value)}
                       disabled={!isEditing}
                       className="pl-10"
+                      placeholder="+91 XXXXXXXXXX"
                     />
                   </div>
                 </div>
@@ -205,96 +266,73 @@ export function ProfilePage({ onPageChange }: ProfilePageProps) {
             </CardContent>
           </Card>
 
-          {/* Quick Stats */}
+          {/* Account Stats */}
           <Card className="glass-card">
             <CardHeader>
-              <CardTitle className="text-base sm:text-lg">Account Summary</CardTitle>
+              <CardTitle>Account Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Total Consumers</span>
-                  <Badge variant="secondary">{consumers.length}</Badge>
+              <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {consumers.length}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Account Status</span>
-                  <Badge variant="default" className="bg-green-600">Active</Badge>
+                <div className="text-sm text-blue-700 dark:text-blue-300">Linked Consumers</div>
+              </div>
+              
+              <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 rounded-lg">
+                <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                  Active
                 </div>
+                <div className="text-sm text-green-700 dark:text-green-300">Account Status</div>
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Consumer Numbers */}
-        <Card className="mt-6 glass-card">
+        <Card className="mt-4 sm:mt-6 glass-card">
           <CardHeader>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <CardTitle className="flex items-center text-base sm:text-lg">
-                  <User className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  {t.consumerNumbers}
-                </CardTitle>
+              <div className="flex-1">
+                <CardTitle className="text-base sm:text-lg">{t.savedConsumers}</CardTitle>
                 <CardDescription className="text-sm">
-                  Manage your registered consumer numbers
+                  Manage your electricity consumer numbers
                 </CardDescription>
               </div>
-              {!isAddingConsumer ? (
+              {!isAddingConsumer && (
                 <Button onClick={() => setIsAddingConsumer(true)} className="w-full sm:w-auto">
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Consumer
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={() => setIsAddingConsumer(false)} className="w-full sm:w-auto">
-                  <X className="w-4 h-4 mr-2" />
-                  Cancel
+                  {t.addConsumer}
                 </Button>
               )}
             </div>
           </CardHeader>
-
-          <CardContent>
+          
+          <CardContent className="space-y-4">
             {isAddingConsumer && (
-              <Card className="mb-4 border-2 border-primary">
-                <CardHeader>
-                  <CardTitle className="text-base">Add New Consumer</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <Card className="border-2 border-dashed border-primary/20">
+                <CardContent className="pt-6 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="consumerNumber">Consumer Number</Label>
-                      <Input
-                        id="consumerNumber"
-                        value={newConsumerNumber}
-                        onChange={(e) => setNewConsumerNumber(e.target.value)}
-                        placeholder="MH123456789"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="consumerName">Name</Label>
-                      <Input
-                        id="consumerName"
-                        value={newConsumerName}
-                        onChange={(e) => setNewConsumerName(e.target.value)}
-                        placeholder="Full Name"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="consumerAddress">Address</Label>
                     <Input
-                      id="consumerAddress"
+                      placeholder="Consumer Number (e.g., MH123456789)"
+                      value={newConsumerNumber}
+                      onChange={(e) => setNewConsumerNumber(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Name"
+                      value={newConsumerName}
+                      onChange={(e) => setNewConsumerName(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Address"
                       value={newConsumerAddress}
                       onChange={(e) => setNewConsumerAddress(e.target.value)}
-                      placeholder="Full Address"
+                      className="sm:col-span-2"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="consumerCategory">Category</Label>
                     <select
-                      id="consumerCategory"
                       value={newConsumerCategory}
                       onChange={(e) => setNewConsumerCategory(e.target.value)}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
                     >
                       <option value="Residential">Residential</option>
                       <option value="Commercial">Commercial</option>
@@ -302,39 +340,72 @@ export function ProfilePage({ onPageChange }: ProfilePageProps) {
                       <option value="Agricultural">Agricultural</option>
                     </select>
                   </div>
-                  <Button onClick={handleAddConsumer} disabled={isSaving} className="w-full">
-                    {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-                    Add Consumer
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleAddConsumer} 
+                      disabled={isSaving || !newConsumerNumber.trim() || !newConsumerName.trim()}
+                      className="flex-1"
+                    >
+                      {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                      Add Consumer
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsAddingConsumer(false);
+                        setNewConsumerNumber('');
+                        setNewConsumerName('');
+                        setNewConsumerAddress('');
+                        setNewConsumerCategory('Residential');
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}
 
-            <div className="space-y-3">
-              {consumers.map((consumer) => (
-                <Card key={consumer.consumerNumber} className="glass-card border">
-                  <CardContent className="p-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            {consumers.map((consumer, index) => {
+              const isRemoving_ = isRemoving === consumer.consumerNumber;
+              
+              return (
+                <Card key={index} className="transition-all">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <p className="font-mono font-semibold text-sm sm:text-base">{consumer.consumerNumber}</p>
-                          <Badge variant={consumer.status === 'Active' ? 'default' : 'secondary'} className="text-xs">
-                            {consumer.status}
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <span className="font-semibold break-all">{consumer.consumerNumber}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {consumer.category || 'Residential'}
                           </Badge>
+                          {consumer.status && (
+                            <Badge variant="default" className="text-xs">
+                              {consumer.status}
+                            </Badge>
+                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">{consumer.address}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge variant="outline" className="text-xs">{consumer.category}</Badge>
+                        
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          <div className="break-words">{consumer.name}</div>
+                          <div className="break-words">{consumer.address}</div>
+                          {consumer.currentBill && (
+                            <div className="flex gap-4 flex-wrap">
+                              <span>Due: ₹{consumer.currentBill.amount}</span>
+                              <span>Units: {consumer.currentBill.unitsConsumed}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
+                      
+                      <Button 
+                        variant="outline" 
                         size="sm"
                         onClick={() => handleRemoveConsumer(consumer.consumerNumber)}
-                        disabled={isRemoving === consumer.consumerNumber}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        disabled={consumers.length === 1 || isRemoving_}
+                        className="shrink-0"
                       >
-                        {isRemoving === consumer.consumerNumber ? (
+                        {isRemoving_ ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <Trash2 className="w-4 h-4" />
@@ -343,8 +414,16 @@ export function ProfilePage({ onPageChange }: ProfilePageProps) {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+              );
+            })}
+
+            {consumers.length === 0 && !isAddingConsumer && (
+              <div className="text-center py-8 text-muted-foreground">
+                <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No consumer numbers added yet</p>
+                <p className="text-sm">Add your first consumer number to get started</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

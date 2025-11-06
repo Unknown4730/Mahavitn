@@ -230,3 +230,57 @@ export const mockAnnouncements: Announcement[] = [
     priority: 'medium'
   }
 ];
+
+// Mock users for authentication
+export interface MockUser {
+  id: string;
+  email: string;
+  password: string;
+  phone: string;
+  name: string;
+  consumerNumbers: string[];
+}
+
+export const mockUsers: MockUser[] = [
+  {
+    id: "user-1",
+    email: "rajesh.sharma@email.com",
+    password: "demo123",
+    phone: "+91 9876543210",
+    name: "Rajesh Kumar Sharma",
+    consumerNumbers: ["MH123456789"]
+  },
+  {
+    id: "user-2",
+    email: "priya.deshpande@email.com",
+    password: "demo123",
+    phone: "+91 9876543211",
+    name: "Priya Deshpande",
+    consumerNumbers: ["MH987654321"]
+  },
+  {
+    id: "user-3",
+    email: "amit.patil@email.com",
+    password: "demo123",
+    phone: "+91 9876543212",
+    name: "अमित पाटील",
+    consumerNumbers: ["MH456789123"]
+  },
+  {
+    id: "user-4",
+    email: "sunita.joshi@email.com",
+    password: "demo123",
+    phone: "+91 9876543213",
+    name: "सुनीता जोशी",
+    consumerNumbers: ["MH654321987"]
+  },
+  // Demo user with all consumer numbers
+  {
+    id: "user-demo",
+    email: "demo@mahavitaran.com",
+    password: "demo123",
+    phone: "+91 9999999999",
+    name: "Demo User",
+    consumerNumbers: ["MH123456789", "MH987654321", "MH456789123", "MH654321987"]
+  }
+];

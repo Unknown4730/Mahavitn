@@ -7,6 +7,7 @@ import { Separator } from './ui/separator';
 import { Textarea } from './ui/textarea';
 import { useLanguage } from './LanguageContext';
 import { toast } from 'sonner@2.0.3';
+import { authApi } from '../utils/api';
 import { 
   Eye, 
   EyeOff, 
@@ -22,10 +23,9 @@ import {
 
 interface RegistrationPageProps {
   onPageChange: (page: string) => void;
-  onLogin: () => void;
 }
 
-export function RegistrationPage({ onPageChange, onLogin }: RegistrationPageProps) {
+export function RegistrationPage({ onPageChange }: RegistrationPageProps) {
   const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -57,15 +57,29 @@ export function RegistrationPage({ onPageChange, onLogin }: RegistrationPageProp
       setIsLoading(false);
       return;
     }
-    
-    // Simple mock registration - accept any valid data
-    setTimeout(() => {
-      localStorage.setItem('userEmail', formData.email);
-      toast.success('Account created successfully! Logging you in...');
+
+    try {
+      // Sign up with Supabase
+      const response = await authApi.signUp(
+        formData.email,
+        formData.password,
+        formData.name,
+        formData.phone
+      );
+
+      if (response.error) {
+        toast.error(response.error);
+        setIsLoading(false);
+        return;
+      }
+
+      toast.success('Account created successfully! Please sign in to continue.');
+      onPageChange('login');
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast.error('Registration failed');
       setIsLoading(false);
-      onLogin();
-      onPageChange('dashboard');
-    }, 800);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
